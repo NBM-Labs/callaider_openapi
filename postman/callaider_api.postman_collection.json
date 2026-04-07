@@ -1,0 +1,717 @@
+{
+  "info": {
+    "name": "Callaider API",
+    "description": "Офіційна Postman-колекція для Callaider API.\n\nНаразі реалізовано модуль **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n\nДокументація: docs/ringing/RINGING_API.md\nOpenAPI специфікація: spec/v1/openapi.json",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_key}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.callaider.ai/v1",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "cld_your_api_key_here",
+      "type": "string"
+    },
+    {
+      "key": "subscriber_group_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "campaign_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "call_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Загальне",
+      "description": "Перевірка з'єднання та стану API",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Перевірка стану API та ідентифікатора компанії, прив'язаної до API-ключа."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Workflow",
+      "description": "Покроковий сценарій запуску кампанії обдзвону. Виконуйте запити послідовно.",
+      "item": [
+        {
+          "name": "1. Отримати конфігурації постаналізу",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/post-analysis-configs",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "post-analysis-configs"]
+            },
+            "description": "Отримати список конфігурацій постаналізу. Запам'ятайте `id` для використання як `postAnalysisConfigId` при створенні кампанії."
+          }
+        },
+        {
+          "name": "2. Отримати конфігурації вебхуків",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/webhook-configs",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "webhook-configs"]
+            },
+            "description": "Отримати список конфігурацій вебхуків. Запам'ятайте `id` для використання як `webhookConfigId` при створенні кампанії."
+          }
+        },
+        {
+          "name": "3. Отримати доступних асистентів",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/assistants",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "assistants"]
+            },
+            "description": "Отримати список доступних AI-асистентів. Запам'ятайте `id` активного асистента (`isEnabled: true`) для використання як `assistantId` при створенні кампанії."
+          }
+        },
+        {
+          "name": "4. Створити групу абонентів",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('subscriber_group_id', response.id);",
+                  "    console.log('subscriber_group_id =', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Клієнти квітень 2026\",\n  \"description\": \"Імпорт з CRM\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups"]
+            },
+            "description": "Створити нову групу абонентів. ID групи автоматично зберігається у змінну `subscriber_group_id`."
+          }
+        },
+        {
+          "name": "5. Завантажити абонентів (batch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"phones\": [\n    \"+380501234567\",\n    \"+380671234567\",\n    \"+380931234567\"\n  ],\n  \"extraData\": [\n    {\"name\": \"Іван Петренко\", \"orderId\": \"ORD-001\"},\n    {\"name\": \"Олена Коваль\", \"orderId\": \"ORD-002\"},\n    {\"name\": \"Тарас Шевченко\", \"orderId\": \"ORD-003\"}\n  ],\n  \"onlyUniquePhones\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/subscribers/batch",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscribers", "batch"]
+            },
+            "description": "Завантажити номери до групи (до 5000 за запит). Номери нормалізуються автоматично."
+          }
+        },
+        {
+          "name": "6. Створити кампанію",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('campaign_id', response.id);",
+                  "    console.log('campaign_id =', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Акція Весна 2026\",\n  \"description\": \"Обдзвон клієнтів з пропозицією знижки\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns"]
+            },
+            "description": "Створити кампанію прозвону. Вкажіть `assistantId` (крок 3), `subscriberGroupId` (крок 4), та опціонально `postAnalysisConfigId` і `webhookConfigId` (кроки 1-2). ID кампанії автоматично зберігається у змінну `campaign_id`."
+          }
+        },
+        {
+          "name": "7. Запустити кампанію",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxCallTryCount\": 3,\n  \"callDelay\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/launch",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "launch"]
+            },
+            "description": "Запустити або перезапустити кампанію (до 4 разів). При першому запуску — обдзвонюються всі абоненти групи. При повторному — тільки ті, яким не вдалося додзвонитися."
+          }
+        },
+        {
+          "name": "8. Отримати статистику",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "statistics"]
+            },
+            "description": "Поточна статистика виконання кампанії: кількість дзвінків за статусами, прогрес у відсотках."
+          }
+        },
+        {
+          "name": "9. Отримати результати дзвінків",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/calls?status=evaluated",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "calls"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "evaluated",
+                  "description": "Фільтр: pending, acquiring_slot, in_progress, completed, failed, evaluating, evaluated"
+                }
+              ]
+            },
+            "description": "Отримати список дзвінків кампанії з фільтром за статусом."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Групи абонентів",
+      "item": [
+        {
+          "name": "Створити групу",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('subscriber_group_id', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Нова група\",\n  \"description\": \"Опис групи\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups"]
+            }
+          }
+        },
+        {
+          "name": "Список груп",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups"]
+            }
+          }
+        },
+        {
+          "name": "Деталі групи",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups/{{subscriber_group_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups", "{{subscriber_group_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Оновити групу",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Оновлена назва\",\n  \"description\": \"Новий опис\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups/{{subscriber_group_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups", "{{subscriber_group_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Видалити групу",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/subscriber-groups/{{subscriber_group_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscriber-groups", "{{subscriber_group_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Абоненти",
+      "item": [
+        {
+          "name": "Завантажити пакет (batch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"phones\": [\n    \"+380501234567\",\n    \"+380671234567\"\n  ],\n  \"extraData\": [\n    {\"name\": \"Іван\", \"orderId\": \"001\"},\n    {\"name\": \"Олена\", \"orderId\": \"002\"}\n  ],\n  \"onlyUniquePhones\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/subscribers/batch",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscribers", "batch"]
+            }
+          }
+        },
+        {
+          "name": "Список абонентів групи",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/subscribers?groupId={{subscriber_group_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscribers"],
+              "query": [
+                {
+                  "key": "groupId",
+                  "value": "{{subscriber_group_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Видалити абонента",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/subscribers/1",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "subscribers", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Кампанії",
+      "item": [
+        {
+          "name": "Створити кампанію",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('campaign_id', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Нова кампанія\",\n  \"description\": \"Опис\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns"]
+            }
+          }
+        },
+        {
+          "name": "Список кампаній",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Фільтр: created, pending, in_progress, paused, completed, failed",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Деталі кампанії",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Оновити кампанію",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Оновлена назва\",\n  \"description\": \"Новий опис\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Видалити кампанію",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Запустити кампанію",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxCallTryCount\": 3,\n  \"callDelay\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/launch",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "launch"]
+            },
+            "description": "Запустити або перезапустити кампанію (до 4 разів). При повторному запуску — тільки абоненти без успішних дзвінків."
+          }
+        },
+        {
+          "name": "Пауза кампанії",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/pause",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "pause"]
+            }
+          }
+        },
+        {
+          "name": "Відновити кампанію",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/resume",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "resume"]
+            }
+          }
+        },
+        {
+          "name": "Статистика кампанії",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "statistics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Дзвінки",
+      "item": [
+        {
+          "name": "Список дзвінків кампанії",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/campaigns/{{campaign_id}}/calls",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "campaigns", "{{campaign_id}}", "calls"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Фільтр: pending, acquiring_slot, in_progress, completed, failed, evaluating, evaluated",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Деталі дзвінка",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/calls/{{call_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "calls", "{{call_id}}"]
+            }
+          }
+        },
+        {
+          "name": "URL запису дзвінка",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/calls/{{call_id}}/recording",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "calls", "{{call_id}}", "recording"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Постаналіз",
+      "description": "Конфігурації створюються в особистому кабінеті Callaider. Через API — тільки читання.",
+      "item": [
+        {
+          "name": "Список конфігурацій",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/post-analysis-configs",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "post-analysis-configs"]
+            }
+          }
+        },
+        {
+          "name": "Деталі конфігурації",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/post-analysis-configs/1",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "post-analysis-configs", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Вебхуки",
+      "description": "Конфігурації створюються в особистому кабінеті Callaider. Через API — читання та тестування.",
+      "item": [
+        {
+          "name": "Список конфігурацій",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/webhook-configs",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "webhook-configs"]
+            }
+          }
+        },
+        {
+          "name": "Деталі конфігурації",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/webhook-configs/1",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "webhook-configs", "1"]
+            }
+          }
+        },
+        {
+          "name": "Тестовий вебхук",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/webhook-configs/1/test",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "webhook-configs", "1", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Асистенти",
+      "description": "Асистенти створюються в особистому кабінеті Callaider. Через API — тільки читання скороченої інформації.",
+      "item": [
+        {
+          "name": "Список доступних асистентів",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/assistants",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "assistants"]
+            },
+            "description": "Отримати список AI-асистентів компанії (id, name, description, language, isEnabled, createdAt). Використовуйте `id` як `assistantId` при створенні кампанії."
+          }
+        }
+      ]
+    }
+  ]
+}

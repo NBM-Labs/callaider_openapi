@@ -1,0 +1,6 @@
+extends:
+  - recommended
+
+rules:
+  no-unused-components: warn
+  operation-description: warn

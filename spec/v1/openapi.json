@@ -1,0 +1,1777 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Callaider API",
+    "version": "1.0.0",
+    "description": "OpenAPI специфікація для Callaider API — платформи AI-дзвінків.\n\nНаразі реалізовано модуль **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n\n## Авторизація\n\nУсі запити потребують **API-ключ** компанії у форматі Bearer-токена:\n\n```\nAuthorization: Bearer cld_ваш_api_ключ\n```\n\nКлюч створюється в особистому кабінеті Callaider (розділ **Інтеграції → API-ключі**).\nФормат ключа: `cld_` + 32 hex-символи.\n\n## Додаткова документація\n\n- [Прозвон (Ringing) — повний гайд](docs/ringing/RINGING_API.md)\n- [Postman-колекція](postman/callaider_api.postman_collection.json)",
+    "contact": {
+      "name": "Callaider",
+      "url": "https://callaider.ai"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.callaider.ai",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Загальне",
+      "description": "Перевірка з'єднання та стану API"
+    },
+    {
+      "name": "Кампанії",
+      "description": "Створення, управління та моніторинг кампаній обдзвону"
+    },
+    {
+      "name": "Групи абонентів",
+      "description": "Управління групами абонентів для кампаній"
+    },
+    {
+      "name": "Абоненти",
+      "description": "Завантаження та управління абонентами"
+    },
+    {
+      "name": "Дзвінки",
+      "description": "Результати та записи дзвінків кампаній"
+    },
+    {
+      "name": "Постаналіз",
+      "description": "Конфігурації AI-постаналізу дзвінків (тільки читання)"
+    },
+    {
+      "name": "Вебхуки",
+      "description": "Конфігурації вебхуків (тільки читання та тестування)"
+    },
+    {
+      "name": "Асистенти",
+      "description": "AI-асистенти компанії (тільки читання)"
+    }
+  ],
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "tags": ["Загальне"],
+        "summary": "Перевірка стану API",
+        "description": "Повертає статус API та ідентифікатор компанії, прив'язаної до API-ключа.",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "API працює",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "companyId": {
+                      "type": "integer",
+                      "example": 42
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-04-07T10:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns": {
+      "post": {
+        "tags": ["Кампанії"],
+        "summary": "Створити кампанію",
+        "description": "Створити нову кампанію обдзвону. Вкажіть `assistantId` (отримати через `GET /assistants`), `subscriberGroupId` (з створеної групи), та опціонально `postAnalysisConfigId` і `webhookConfigId`.",
+        "operationId": "createCampaign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Кампанію створено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Кампанії"],
+        "summary": "Список кампаній",
+        "description": "Отримати список кампаній компанії з можливістю фільтрації за статусом.",
+        "operationId": "findAllCampaigns",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Фільтр за статусом кампанії",
+            "schema": {
+              "$ref": "#/components/schemas/CampaignStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список кампаній",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Campaign"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CampaignId"
+        }
+      ],
+      "get": {
+        "tags": ["Кампанії"],
+        "summary": "Деталі кампанії",
+        "description": "Отримати повну інформацію про кампанію за її ідентифікатором.",
+        "operationId": "findOneCampaign",
+        "responses": {
+          "200": {
+            "description": "Деталі кампанії",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Кампанії"],
+        "summary": "Оновити кампанію",
+        "description": "Оновити кампанію. Можливо тільки до запуску (статус `created`).",
+        "operationId": "updateCampaign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Кампанію оновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Кампанії"],
+        "summary": "Видалити кампанію",
+        "description": "Видалити кампанію та всі пов'язані дзвінки.",
+        "operationId": "deleteCampaign",
+        "responses": {
+          "200": {
+            "description": "Кампанію видалено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{id}/launch": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CampaignId"
+        }
+      ],
+      "post": {
+        "tags": ["Кампанії"],
+        "summary": "Запустити / перезапустити кампанію",
+        "description": "Запустити кампанію обдзвону. Підтримує повторний запуск (до 4 разів).\n\n**Перший запуск:** обдзвонюються всі абоненти групи, `maxCallTryCount` та `callDelay` зберігаються.\n\n**Повторний запуск (re-launch):** обдзвонюються тільки абоненти без успішних дзвінків (статус `failed`, кількість невдалих спроб < `maxCallTryCount`). Старі записи дзвінків зберігаються. Якщо eligible абонентів немає — кампанія автоматично позначається як `completed`.",
+        "operationId": "launchCampaign",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Кампанію запущено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{id}/pause": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CampaignId"
+        }
+      ],
+      "post": {
+        "tags": ["Кампанії"],
+        "summary": "Поставити кампанію на паузу",
+        "description": "Зупинити обдзвон. Нові дзвінки не ініціюються, активні — завершуються. Можливо тільки зі статусу `in_progress`.",
+        "operationId": "pauseCampaign",
+        "responses": {
+          "200": {
+            "description": "Кампанію поставлено на паузу",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{id}/resume": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CampaignId"
+        }
+      ],
+      "post": {
+        "tags": ["Кампанії"],
+        "summary": "Відновити кампанію",
+        "description": "Відновити обдзвон після паузи. Можливо тільки зі статусу `paused`.",
+        "operationId": "resumeCampaign",
+        "responses": {
+          "200": {
+            "description": "Кампанію відновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{id}/statistics": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CampaignId"
+        }
+      ],
+      "get": {
+        "tags": ["Кампанії"],
+        "summary": "Статистика кампанії",
+        "description": "Поточна статистика виконання кампанії: кількість дзвінків за статусами, прогрес у відсотках.",
+        "operationId": "campaignStatistics",
+        "responses": {
+          "200": {
+            "description": "Статистика кампанії",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignStatistics"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/campaigns/{campaignId}/calls": {
+      "parameters": [
+        {
+          "name": "campaignId",
+          "in": "path",
+          "required": true,
+          "description": "Ідентифікатор кампанії",
+          "schema": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": ["Дзвінки"],
+        "summary": "Список дзвінків кампанії",
+        "description": "Отримати список дзвінків кампанії з можливістю фільтрації за статусом.",
+        "operationId": "findAllCalls",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Фільтр за статусом дзвінка",
+            "schema": {
+              "$ref": "#/components/schemas/CallStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список дзвінків",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Call"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/calls/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CallId"
+        }
+      ],
+      "get": {
+        "tags": ["Дзвінки"],
+        "summary": "Деталі дзвінка",
+        "description": "Повна інформація про дзвінок: статус, тривалість, транскрипт, результат постаналізу, вебхук.",
+        "operationId": "findOneCall",
+        "responses": {
+          "200": {
+            "description": "Деталі дзвінка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Call"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/calls/{id}/recording": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CallId"
+        }
+      ],
+      "get": {
+        "tags": ["Дзвінки"],
+        "summary": "URL запису дзвінка",
+        "description": "Отримати URL аудіозапису дзвінка.",
+        "operationId": "getCallRecordingUrl",
+        "responses": {
+          "200": {
+            "description": "URL запису",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "URL аудіозапису дзвінка",
+                      "example": "https://storage.example.com/recordings/call-42.mp3"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/subscriber-groups": {
+      "post": {
+        "tags": ["Групи абонентів"],
+        "summary": "Створити групу абонентів",
+        "description": "Створити нову групу абонентів для кампанії обдзвону.",
+        "operationId": "createSubscriberGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriberGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Групу створено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriberGroup"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Групи абонентів"],
+        "summary": "Список груп абонентів",
+        "description": "Отримати список груп абонентів компанії з кількістю абонентів у кожній групі.",
+        "operationId": "findAllSubscriberGroups",
+        "responses": {
+          "200": {
+            "description": "Список груп",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriberGroup"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/subscriber-groups/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SubscriberGroupId"
+        }
+      ],
+      "get": {
+        "tags": ["Групи абонентів"],
+        "summary": "Деталі групи",
+        "description": "Отримати інформацію про групу абонентів за ідентифікатором.",
+        "operationId": "findOneSubscriberGroup",
+        "responses": {
+          "200": {
+            "description": "Деталі групи",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriberGroup"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Групи абонентів"],
+        "summary": "Оновити групу",
+        "description": "Оновити назву або опис групи абонентів.",
+        "operationId": "updateSubscriberGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriberGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Групу оновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriberGroup"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Групи абонентів"],
+        "summary": "Видалити групу",
+        "description": "Видалити групу абонентів. **Увага:** каскадно видаляються всі абоненти групи!",
+        "operationId": "deleteSubscriberGroup",
+        "responses": {
+          "200": {
+            "description": "Групу видалено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/subscribers/batch": {
+      "post": {
+        "tags": ["Абоненти"],
+        "summary": "Завантажити пакет абонентів",
+        "description": "Масове додавання абонентів до групи (до 5000 номерів за запит). Номери нормалізуються автоматично: пробіли, дефіси, дужки видаляються.\n\nНомери потрібно передавати у міжнародному форматі (з `+` і кодом країни) або у форматі, який приймає ваша телефонія.",
+        "operationId": "addBatchSubscribers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSubscribersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Абонентів додано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSubscribersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/subscribers": {
+      "get": {
+        "tags": ["Абоненти"],
+        "summary": "Список абонентів",
+        "description": "Отримати список абонентів з фільтрацією за групою.",
+        "operationId": "findAllSubscribers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "query",
+            "required": false,
+            "description": "Фільтр за ідентифікатором групи",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список абонентів",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Subscriber"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/subscribers/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Ідентифікатор абонента",
+          "schema": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      ],
+      "delete": {
+        "tags": ["Абоненти"],
+        "summary": "Видалити абонента",
+        "description": "Видалити конкретного абонента за ідентифікатором.",
+        "operationId": "deleteSubscriber",
+        "responses": {
+          "200": {
+            "description": "Абонента видалено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/post-analysis-configs": {
+      "get": {
+        "tags": ["Постаналіз"],
+        "summary": "Список конфігурацій постаналізу",
+        "description": "Отримати список конфігурацій AI-постаналізу дзвінків. Конфігурації створюються та редагуються в особистому кабінеті Callaider.\n\nВикористовуйте `id` з відповіді як `postAnalysisConfigId` при створенні кампанії.",
+        "operationId": "findAllPostAnalysisConfigs",
+        "responses": {
+          "200": {
+            "description": "Список конфігурацій",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostAnalysisConfig"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/post-analysis-configs/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Ідентифікатор конфігурації постаналізу",
+          "schema": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": ["Постаналіз"],
+        "summary": "Деталі конфігурації постаналізу",
+        "description": "Отримати повну інформацію про конфігурацію постаналізу.",
+        "operationId": "findOnePostAnalysisConfig",
+        "responses": {
+          "200": {
+            "description": "Деталі конфігурації",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostAnalysisConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/webhook-configs": {
+      "get": {
+        "tags": ["Вебхуки"],
+        "summary": "Список конфігурацій вебхуків",
+        "description": "Отримати список конфігурацій вебхуків. Конфігурації створюються та редагуються в особистому кабінеті Callaider.\n\nВикористовуйте `id` з відповіді як `webhookConfigId` при створенні кампанії.",
+        "operationId": "findAllWebhookConfigs",
+        "responses": {
+          "200": {
+            "description": "Список конфігурацій",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookConfig"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/ringing/webhook-configs/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Ідентифікатор конфігурації вебхука",
+          "schema": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": ["Вебхуки"],
+        "summary": "Деталі конфігурації вебхука",
+        "description": "Отримати повну інформацію про конфігурацію вебхука.",
+        "operationId": "findOneWebhookConfig",
+        "responses": {
+          "200": {
+            "description": "Деталі конфігурації",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/webhook-configs/{id}/test": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Ідентифікатор конфігурації вебхука",
+          "schema": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      ],
+      "post": {
+        "tags": ["Вебхуки"],
+        "summary": "Тестовий вебхук",
+        "description": "Відправити тестовий вебхук на URL конфігурації для перевірки з'єднання.",
+        "operationId": "testWebhookConfig",
+        "responses": {
+          "200": {
+            "description": "Результат тестування",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Чи був запит успішним",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP-код відповіді від вебхук-серверу",
+                      "example": 200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/ringing/assistants": {
+      "get": {
+        "tags": ["Асистенти"],
+        "summary": "Список доступних асистентів",
+        "description": "Отримати список AI-асистентів компанії у скороченому форматі. Асистенти створюються та налаштовуються в особистому кабінеті Callaider.\n\nВикористовуйте `id` активного асистента (`isEnabled: true`) як `assistantId` при створенні кампанії.",
+        "operationId": "findAllAssistants",
+        "responses": {
+          "200": {
+            "description": "Список асистентів",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Assistant"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API-ключ компанії. Формат: `cld_` + 32 hex-символи. Створюється в особистому кабінеті Callaider (розділ Інтеграції → API-ключі).",
+        "bearerFormat": "cld_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "parameters": {
+      "CampaignId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Ідентифікатор кампанії",
+        "schema": {
+          "type": "integer",
+          "example": 1
+        }
+      },
+      "CallId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Ідентифікатор дзвінка",
+        "schema": {
+          "type": "integer",
+          "example": 42
+        }
+      },
+      "SubscriberGroupId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Ідентифікатор групи абонентів",
+        "schema": {
+          "type": "integer",
+          "example": 1
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Помилка авторизації — відсутній, некоректний або простроченний API-ключ",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "statusCode": 401,
+              "message": "Invalid or expired API key",
+              "error": "Unauthorized"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Некоректний запит — помилка валідації параметрів",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "statusCode": 400,
+              "message": "Validation failed",
+              "error": "Bad Request"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Ресурс не знайдено",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "statusCode": 404,
+              "message": "Not found",
+              "error": "Not Found"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "CampaignStatus": {
+        "type": "string",
+        "enum": ["created", "pending", "in_progress", "paused", "completed", "failed"],
+        "description": "Статус кампанії"
+      },
+      "CallStatus": {
+        "type": "string",
+        "enum": ["pending", "acquiring_slot", "in_progress", "completed", "failed", "evaluating", "evaluated"],
+        "description": "Статус дзвінка"
+      },
+      "EvaluationStatus": {
+        "type": "string",
+        "enum": ["none", "pending", "processing", "success", "failure"],
+        "description": "Статус постаналізу дзвінка"
+      },
+      "Campaign": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор кампанії",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва кампанії",
+            "example": "Акція Весна 2026"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Опис кампанії",
+            "example": "Обдзвон клієнтів з пропозицією знижки"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CampaignStatus"
+          },
+          "launched": {
+            "type": "boolean",
+            "description": "Чи була кампанія запущена",
+            "example": false
+          },
+          "assistantId": {
+            "type": "integer",
+            "description": "ID AI-асистента",
+            "example": 15
+          },
+          "subscriberGroupId": {
+            "type": "integer",
+            "description": "ID групи абонентів",
+            "example": 1
+          },
+          "postAnalysisConfigId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID конфігурації постаналізу",
+            "example": 1
+          },
+          "webhookConfigId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID конфігурації вебхука",
+            "example": 1
+          },
+          "maxCallTryCount": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Максимальна кількість спроб дозвону (встановлюється при першому запуску)",
+            "example": 3
+          },
+          "callDelay": {
+            "type": "number",
+            "nullable": true,
+            "description": "Затримка між дзвінками в секундах",
+            "example": 1
+          },
+          "launchCount": {
+            "type": "integer",
+            "description": "Кількість запусків (макс. 4)",
+            "example": 1
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Запланований час запуску"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Час фактичного запуску"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Час завершення"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-04-03T12:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата оновлення"
+          }
+        }
+      },
+      "CreateCampaignRequest": {
+        "type": "object",
+        "required": ["name", "assistantId", "subscriberGroupId"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Назва кампанії",
+            "example": "Акція Весна 2026"
+          },
+          "description": {
+            "type": "string",
+            "description": "Опис кампанії",
+            "example": "Обдзвон клієнтів з пропозицією знижки"
+          },
+          "assistantId": {
+            "type": "integer",
+            "description": "ID AI-асистента (отримати через GET /v1/ringing/assistants)",
+            "example": 15
+          },
+          "subscriberGroupId": {
+            "type": "integer",
+            "description": "ID групи абонентів",
+            "example": 1
+          },
+          "postAnalysisConfigId": {
+            "type": "integer",
+            "description": "ID конфігурації постаналізу (отримати через GET /v1/ringing/post-analysis-configs)",
+            "example": 1
+          },
+          "webhookConfigId": {
+            "type": "integer",
+            "description": "ID конфігурації вебхука (отримати через GET /v1/ringing/webhook-configs)",
+            "example": 1
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Запланований час запуску (ISO 8601)"
+          }
+        }
+      },
+      "UpdateCampaignRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Назва кампанії",
+            "example": "Оновлена назва"
+          },
+          "description": {
+            "type": "string",
+            "description": "Опис кампанії",
+            "example": "Новий опис"
+          },
+          "assistantId": {
+            "type": "integer",
+            "description": "ID AI-асистента"
+          },
+          "subscriberGroupId": {
+            "type": "integer",
+            "description": "ID групи абонентів"
+          },
+          "postAnalysisConfigId": {
+            "type": "integer",
+            "description": "ID конфігурації постаналізу"
+          },
+          "webhookConfigId": {
+            "type": "integer",
+            "description": "ID конфігурації вебхука"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Запланований час запуску"
+          }
+        }
+      },
+      "LaunchCampaignRequest": {
+        "type": "object",
+        "properties": {
+          "maxCallTryCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3,
+            "default": 3,
+            "description": "Максимальна кількість спроб дозвону на абонента (1–3). Зберігається при першому запуску, ігнорується при повторних.",
+            "example": 3
+          },
+          "callDelay": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "default": 1,
+            "description": "Затримка між дзвінками в секундах (0–10)",
+            "example": 1
+          }
+        }
+      },
+      "CampaignStatistics": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "integer",
+            "description": "Ідентифікатор кампанії",
+            "example": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/CampaignStatus"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Загальна кількість дзвінків",
+            "example": 100
+          },
+          "pending": {
+            "type": "integer",
+            "description": "Очікують обробки",
+            "example": 30
+          },
+          "in_progress": {
+            "type": "integer",
+            "description": "Активні дзвінки",
+            "example": 5
+          },
+          "completed": {
+            "type": "integer",
+            "description": "Завершені, очікують постаналіз",
+            "example": 45
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Невдалі дзвінки",
+            "example": 10
+          },
+          "evaluated": {
+            "type": "integer",
+            "description": "Постаналіз завершено",
+            "example": 10
+          },
+          "evaluating": {
+            "type": "integer",
+            "description": "Виконується постаналіз",
+            "example": 0
+          },
+          "progress": {
+            "type": "number",
+            "description": "Прогрес виконання у відсотках (0–100)",
+            "example": 65
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Час початку обдзвону",
+            "example": "2026-04-05T09:00:15.000Z"
+          }
+        }
+      },
+      "SubscriberGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор групи",
+            "example": 1
+          },
+          "companyId": {
+            "type": "integer",
+            "description": "Ідентифікатор компанії",
+            "example": 42
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва групи",
+            "example": "Клієнти квітень 2026"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Опис групи",
+            "example": "Імпорт з CRM"
+          },
+          "subscribersCount": {
+            "type": "integer",
+            "description": "Кількість абонентів у групі",
+            "example": 150
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-04-03T10:00:00.000Z"
+          }
+        }
+      },
+      "CreateSubscriberGroupRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Назва групи (унікальна в межах компанії)",
+            "example": "Клієнти квітень 2026"
+          },
+          "description": {
+            "type": "string",
+            "description": "Опис групи",
+            "example": "Імпорт з CRM"
+          }
+        }
+      },
+      "Subscriber": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор абонента",
+            "example": 1
+          },
+          "subscriberGroupId": {
+            "type": "integer",
+            "description": "ID групи абонента",
+            "example": 1
+          },
+          "phone": {
+            "type": "string",
+            "description": "Номер телефону (нормалізований)",
+            "example": "+380501234567"
+          },
+          "extraData": {
+            "type": "object",
+            "nullable": true,
+            "description": "Додаткові дані абонента (передаються AI-асистенту)",
+            "example": {
+              "name": "Іван Петренко",
+              "orderId": "ORD-001"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення"
+          }
+        }
+      },
+      "BatchSubscribersRequest": {
+        "type": "object",
+        "required": ["phones"],
+        "properties": {
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 5000,
+            "description": "Масив номерів у міжнародному форматі (1–5000). Пробіли, дефіси, дужки видаляються автоматично.",
+            "example": ["+380501234567", "+380671234567", "+380931234567"]
+          },
+          "extraData": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Додаткові дані по кожному абоненту (індекс відповідає масиву phones). Передаються AI-асистенту під час дзвінка.",
+            "example": [
+              {"name": "Іван Петренко", "orderId": "ORD-001"},
+              {"name": "Олена Коваль", "orderId": "ORD-002"},
+              {"name": "Тарас Шевченко", "orderId": "ORD-003"}
+            ]
+          },
+          "subscriberGroupId": {
+            "type": "integer",
+            "description": "ID існуючої групи. Потрібен або `subscriberGroupId`, або `subscriberGroupName`.",
+            "example": 1
+          },
+          "subscriberGroupName": {
+            "type": "string",
+            "description": "Назва нової групи (буде створена автоматично). Потрібен або `subscriberGroupId`, або `subscriberGroupName`.",
+            "example": "Нова група з API"
+          },
+          "onlyUniquePhones": {
+            "type": "boolean",
+            "description": "Пропускати дублікати номерів у межах групи",
+            "default": false,
+            "example": true
+          }
+        }
+      },
+      "BatchSubscribersResponse": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "description": "Повідомлення про результат",
+            "example": "Added 3 subscribers"
+          },
+          "subscriberGroup": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "ID групи",
+                "example": 1
+              },
+              "subscribersCount": {
+                "type": "integer",
+                "description": "Загальна кількість абонентів у групі",
+                "example": 3
+              }
+            }
+          }
+        }
+      },
+      "Call": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор дзвінка",
+            "example": 42
+          },
+          "campaignId": {
+            "type": "integer",
+            "description": "ID кампанії",
+            "example": 1
+          },
+          "subscriberId": {
+            "type": "integer",
+            "description": "ID абонента",
+            "example": 15
+          },
+          "assistantId": {
+            "type": "integer",
+            "description": "ID AI-асистента",
+            "example": 15
+          },
+          "status": {
+            "$ref": "#/components/schemas/CallStatus"
+          },
+          "callDuration": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Тривалість дзвінка в секундах",
+            "example": 125
+          },
+          "endReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Причина завершення дзвінка",
+            "example": "normal_clearing"
+          },
+          "transcript": {
+            "type": "string",
+            "nullable": true,
+            "description": "Транскрипт розмови",
+            "example": "Асистент: Доброго дня! Олено..."
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true,
+            "description": "Короткий підсумок розмови",
+            "example": "Клієнтка зацікавлена у пропозиції..."
+          },
+          "recordingUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "URL аудіозапису дзвінка",
+            "example": "https://storage.example.com/recording.mp3"
+          },
+          "evaluationStatus": {
+            "$ref": "#/components/schemas/EvaluationStatus"
+          },
+          "evaluationResult": {
+            "type": "object",
+            "nullable": true,
+            "description": "Результат AI-постаналізу (структура визначається responseSchema конфігурації)",
+            "example": {
+              "interested": true,
+              "score": 8,
+              "summary": "Клієнтка виявила інтерес до продукту"
+            }
+          },
+          "webhookSent": {
+            "type": "boolean",
+            "description": "Чи було відправлено вебхук",
+            "example": true
+          },
+          "webhookSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Час відправки вебхука",
+            "example": "2026-04-05T09:05:30.000Z"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "description": "Номер спроби дозвону",
+            "example": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення запису дзвінка",
+            "example": "2026-04-05T09:00:20.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата оновлення",
+            "example": "2026-04-05T09:05:30.000Z"
+          }
+        }
+      },
+      "PostAnalysisConfig": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор конфігурації",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва конфігурації",
+            "example": "Стандартна оцінка"
+          },
+          "evaluationPrompt": {
+            "type": "string",
+            "description": "Промпт для AI-оцінки транскрипта",
+            "example": "Оціни розмову за шкалою 1-10..."
+          },
+          "responseSchema": {
+            "type": "object",
+            "description": "Очікувана структура JSON-відповіді AI",
+            "example": {
+              "score": "number",
+              "interested": "boolean"
+            }
+          },
+          "minCallDurationForEvaluation": {
+            "type": "integer",
+            "description": "Мінімальна тривалість дзвінка (секунди) для виконання оцінки. Коротші дзвінки пропускаються.",
+            "example": 10
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Чи активна конфігурація",
+            "example": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Чи є конфігурацією за замовчуванням",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-04-01T10:00:00.000Z"
+          }
+        }
+      },
+      "WebhookConfig": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор конфігурації",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва конфігурації",
+            "example": "CRM Інтеграція"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL для відправки вебхуків",
+            "example": "https://my-crm.example.com/api/webhook"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP-метод запиту",
+            "example": "POST"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Чи активна конфігурація",
+            "example": true
+          },
+          "retryAttempts": {
+            "type": "integer",
+            "description": "Кількість повторних спроб (exponential backoff)",
+            "example": 3
+          },
+          "retryDelay": {
+            "type": "integer",
+            "description": "Початковий інтервал між спробами (секунди). Стратегія: retryDelay × 2^спроба",
+            "example": 30
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-04-01T10:00:00.000Z"
+          }
+        }
+      },
+      "Assistant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор асистента — використовується як assistantId при створенні кампанії",
+            "example": 15
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва асистента",
+            "example": "Продажі — акції"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Опис асистента",
+            "example": "Асистент для обдзвону з пропозиціями знижок"
+          },
+          "language": {
+            "type": "string",
+            "description": "Мова асистента",
+            "example": "UK"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Чи активний асистент. Для кампаній використовуйте тільки активних (true).",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-03-15T08:00:00.000Z"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "description": "HTTP-код помилки",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "description": "Опис помилки",
+            "example": "Validation failed"
+          },
+          "error": {
+            "type": "string",
+            "description": "Тип помилки",
+            "example": "Bad Request"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      }
+    }
+  }
+}

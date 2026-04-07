@@ -1,0 +1,11 @@
+{
+  "name": "callaider-openapi",
+  "version": "1.0.0",
+  "description": "OpenAPI специфікація для Callaider API",
+  "scripts": {
+    "lint": "npx @redocly/cli lint spec/v1/openapi.json",
+    "preview": "npx @redocly/cli preview spec/v1/openapi.json",
+    "build-docs": "npx @redocly/cli build-docs spec/v1/openapi.json -o index.html"
+  },
+  "license": "MIT"
+}
