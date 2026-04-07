@@ -24,7 +24,7 @@ npx @redocly/cli lint spec/v1/openapi.json
 Превʼю документації локально:
 
 ```bash
-npx @redocly/cli preview spec/v1/openapi.json
+npx @redocly/cli preview
 ```
 
 Згенерувати HTML-документацію:
