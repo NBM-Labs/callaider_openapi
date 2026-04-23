@@ -114,7 +114,7 @@
               "host": ["{{base_url}}"],
               "path": ["ringing", "sip-accounts"]
             },
-            "description": "Отримати список SIP-акаунтів компанії (id, name, trunkType, callerId, status, isEnabled). Використовуйте `id` активних акаунтів як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використаються всі активні акаунти."
+            "description": "Отримати список SIP-акаунтів компанії. Ключові поля: id, name, trunkType (registration|ip_trunk), callerId, dialNumberFormat, status (pending|registered|failed|disabled), isEnabled, maxConcurrentCalls, priority. Використовуйте `id` активних акаунтів (`isEnabled: true`) як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використаються всі активні акаунти."
           }
         },
         {
@@ -721,7 +721,7 @@
               "host": ["{{base_url}}"],
               "path": ["ringing", "sip-accounts"]
             },
-            "description": "Отримати список SIP-акаунтів компанії (id, name, trunkType, callerId, status, isEnabled). Використовуйте `id` активних акаунтів як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використовуються всі активні акаунти."
+            "description": "Отримати список SIP-акаунтів компанії. Ключові поля: id, name, trunkType (registration|ip_trunk), callerId, dialNumberFormat, status (pending|registered|failed|disabled), isEnabled, maxConcurrentCalls, priority. Використовуйте `id` активних акаунтів (`isEnabled: true`) як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використовуються всі активні акаунти."
           }
         }
       ]

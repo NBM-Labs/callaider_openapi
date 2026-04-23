@@ -475,7 +475,7 @@ Authorization: Bearer cld_ваш_ключ
 
 ### SIP-акаунти
 
-> SIP-акаунти створюються та налаштовуються в **особистому кабінеті** (розділ «Телефонія»). Через API доступне лише читання скороченої інформації.
+> SIP-акаунти створюються та налаштовуються в **особистому кабінеті** (розділ «Телефонія»). Через API доступне лише читання.
 
 | Метод | Шлях | Опис |
 |---|---|---|
@@ -492,11 +492,30 @@ Authorization: Bearer cld_ваш_ключ
 [
   {
     "id": 10,
-    "name": "Київстар основний",
-    "trunkType": "sip",
+    "companyId": 42,
+    "name": "Kyivstar Trunk",
+    "trunkType": "registration",
+    "username": "1001",
+    "domain": "pbx.example.com",
+    "remoteIp": null,
+    "remotePort": 5060,
+    "codecs": "alaw,ulaw",
+    "transport": "transport-udp",
     "callerId": "+380441234567",
+    "dialNumberFormat": "e164",
+    "dialPrefix": null,
     "status": "registered",
-    "isEnabled": true
+    "lastRegistration": "2026-04-20T13:00:00.000Z",
+    "registrationError": null,
+    "pjsipEndpointId": "endpoint_10",
+    "isEnabled": true,
+    "isActive": true,
+    "isDefault": false,
+    "maxConcurrentCalls": 5,
+    "currentActiveCalls": 1,
+    "priority": 0,
+    "createdAt": "2026-04-01T10:00:00.000Z",
+    "updatedAt": "2026-04-20T13:00:00.000Z"
   }
 ]
 ```
@@ -504,11 +523,30 @@ Authorization: Bearer cld_ваш_ключ
 | Поле | Тип | Опис |
 |---|---|---|
 | `id` | `number` | Ідентифікатор — використовується як елемент масиву `sipAccountIds` при створенні кампанії |
+| `companyId` | `number` | Ідентифікатор компанії |
 | `name` | `string` | Назва акаунту |
-| `trunkType` | `string` | Тип транка (`sip`, `pjsip`, тощо) |
+| `trunkType` | `registration \| ip_trunk` | Тип SIP-транка |
+| `username` | `string \| null` | Логін SIP-акаунта |
+| `domain` | `string \| null` | SIP-сервер (домен) |
+| `remoteIp` | `string \| null` | Remote peer IP (для IP trunk) |
+| `remotePort` | `number \| null` | Remote peer port (для IP trunk) |
+| `codecs` | `string \| null` | Список кодеків через кому |
+| `transport` | `string \| null` | PJSIP transport (`transport-udp`, `transport-tcp`, `transport-tls`) |
 | `callerId` | `string \| null` | Номер, що відображається викликуваному |
-| `status` | `string` | Поточний статус реєстрації |
-| `isEnabled` | `boolean` | Чи активний акаунт |
+| `dialNumberFormat` | `e164 \| international \| national \| local \| custom \| null` | Формат набору номера для вихідних викликів |
+| `dialPrefix` | `string \| null` | Префікс набору (коли `dialNumberFormat = custom`) |
+| `status` | `pending \| registered \| failed \| disabled` | Поточний стан акаунта |
+| `lastRegistration` | `string \| null` | Час останньої реєстрації (ISO 8601) |
+| `registrationError` | `string \| null` | Опис помилки реєстрації |
+| `pjsipEndpointId` | `string \| null` | Ідентифікатор endpoint у PJSIP |
+| `isEnabled` | `boolean` | Чи активний акаунт (для кампаній використовуйте тільки активні) |
+| `isActive` | `boolean` | Логічний стан активності |
+| `isDefault` | `boolean` | Акаунт за замовчуванням |
+| `maxConcurrentCalls` | `number` | Максимальна кількість одночасних дзвінків |
+| `currentActiveCalls` | `number` | Поточна кількість активних дзвінків |
+| `priority` | `number` | Пріоритет балансування (0 = найвищий) |
+| `createdAt` | `string` | Дата створення |
+| `updatedAt` | `string` | Дата оновлення |
 
 > Для кампанії беруть до уваги лише акаунти з `isEnabled: true`. Якщо `sipAccountIds` не передано при створенні кампанії — використовуються всі активні SIP-акаунти компанії.
 
