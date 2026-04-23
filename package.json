@@ -1,6 +1,6 @@
 {
   "name": "callaider-openapi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OpenAPI специфікація для Callaider API",
   "scripts": {
     "lint": "npx @redocly/cli lint spec/v1/openapi.json",

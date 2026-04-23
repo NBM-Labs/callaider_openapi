@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Callaider API",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "OpenAPI специфікація для Callaider API — платформи AI-дзвінків.\n\nНаразі реалізовано модуль **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n\n## Авторизація\n\nУсі запити потребують **API-ключ** компанії у форматі Bearer-токена:\n\n```\nAuthorization: Bearer cld_ваш_api_ключ\n```\n\nКлюч створюється в особистому кабінеті Callaider (розділ **Інтеграції → API-ключі**).\nФормат ключа: `cld_` + 32 hex-символи.\n\n## Додаткова документація\n\n- [Прозвон (Ringing) — повний гайд](docs/ringing/RINGING_API.md)\n- [Postman-колекція](postman/callaider_api.postman_collection.json)",
     "contact": {
       "name": "Callaider",
@@ -56,6 +56,10 @@
     {
       "name": "Асистенти",
       "description": "AI-асистенти компанії (тільки читання)"
+    },
+    {
+      "name": "SIP-акаунти",
+      "description": "SIP-акаунти компанії для маршрутизації дзвінків (тільки читання)"
     }
   ],
   "paths": {
@@ -101,7 +105,7 @@
       "post": {
         "tags": ["Кампанії"],
         "summary": "Створити кампанію",
-        "description": "Створити нову кампанію обдзвону. Вкажіть `assistantId` (отримати через `GET /assistants`), `subscriberGroupId` (з створеної групи), та опціонально `postAnalysisConfigId` і `webhookConfigId`.",
+        "description": "Створити нову кампанію обдзвону. Вкажіть `assistantId` (отримати через `GET /assistants`), `subscriberGroupId` (з створеної групи), та опціонально `postAnalysisConfigId`, `webhookConfigId` і `sipAccountIds` (отримати через `GET /sip-accounts`). Якщо `sipAccountIds` не передано - використовуються всі активні SIP-акаунти компанії.",
         "operationId": "createCampaign",
         "requestBody": {
           "required": true,
@@ -992,6 +996,32 @@
           }
         }
       }
+    },
+    "/v1/ringing/sip-accounts": {
+      "get": {
+        "tags": ["SIP-акаунти"],
+        "summary": "Список SIP-акаунтів",
+        "description": "Отримати список SIP-акаунтів компанії для вихідних дзвінків кампаній. Використовуйте `id` активних акаунтів (`isEnabled: true`) як елементи масиву `sipAccountIds` при створенні кампанії.",
+        "operationId": "findAllSipAccounts",
+        "responses": {
+          "200": {
+            "description": "Список SIP-акаунтів",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SipAccount"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1147,6 +1177,15 @@
             "description": "ID конфігурації вебхука",
             "example": 1
           },
+          "sipAccountIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "nullable": true,
+            "description": "Список ID SIP-акаунтів для маршрутизації дзвінків. Якщо не вказано - використовуються всі активні SIP-акаунти компанії.",
+            "example": [10, 11]
+          },
           "maxCallTryCount": {
             "type": "integer",
             "nullable": true,
@@ -1229,6 +1268,14 @@
             "description": "ID конфігурації вебхука (отримати через GET /v1/ringing/webhook-configs)",
             "example": 1
           },
+          "sipAccountIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Список ID SIP-акаунтів (отримати через GET /v1/ringing/sip-accounts). Якщо не вказано - використовуються всі активні SIP-акаунти компанії.",
+            "example": [10, 11]
+          },
           "scheduledAt": {
             "type": "string",
             "format": "date-time",
@@ -1264,6 +1311,13 @@
           "webhookConfigId": {
             "type": "integer",
             "description": "ID конфігурації вебхука"
+          },
+          "sipAccountIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Список ID SIP-акаунтів"
           },
           "scheduledAt": {
             "type": "string",
@@ -1740,6 +1794,160 @@
             "format": "date-time",
             "description": "Дата створення",
             "example": "2026-03-15T08:00:00.000Z"
+          }
+        }
+      },
+      "SipAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор SIP-акаунта - використовується у масиві sipAccountIds при створенні кампанії",
+            "example": 10
+          },
+          "companyId": {
+            "type": "integer",
+            "description": "Ідентифікатор компанії",
+            "example": 42
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва SIP-акаунта",
+            "example": "Kyiv Trunk 1"
+          },
+          "trunkType": {
+            "type": "string",
+            "enum": ["registration", "ip_trunk"],
+            "description": "Тип SIP-транка",
+            "example": "registration"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true,
+            "description": "Логін SIP-акаунта",
+            "example": "1001"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true,
+            "description": "Пароль SIP-акаунта",
+            "example": "secret"
+          },
+          "domain": {
+            "type": "string",
+            "nullable": true,
+            "description": "SIP-сервер (домен)",
+            "example": "pbx.example.com"
+          },
+          "remoteIp": {
+            "type": "string",
+            "nullable": true,
+            "description": "Remote peer IP для IP trunk",
+            "example": "203.0.113.10"
+          },
+          "remotePort": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Remote peer port для IP trunk",
+            "example": 5060
+          },
+          "codecs": {
+            "type": "string",
+            "nullable": true,
+            "description": "Список кодеків через кому",
+            "example": "alaw,ulaw"
+          },
+          "transport": {
+            "type": "string",
+            "nullable": true,
+            "description": "PJSIP transport",
+            "example": "transport-udp"
+          },
+          "callerId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Caller ID для вихідних дзвінків",
+            "example": "+380441234567"
+          },
+          "dialNumberFormat": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["e164", "international", "national", "local", "custom"],
+            "description": "Формат набору номера для вихідних викликів",
+            "example": "e164"
+          },
+          "dialPrefix": {
+            "type": "string",
+            "nullable": true,
+            "description": "Префікс набору (коли dialNumberFormat = custom)",
+            "example": "00"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "registered", "failed", "disabled"],
+            "description": "Поточний стан SIP-акаунта",
+            "example": "registered"
+          },
+          "lastRegistration": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Час останньої реєстрації",
+            "example": "2026-04-20T13:00:00.000Z"
+          },
+          "registrationError": {
+            "type": "string",
+            "nullable": true,
+            "description": "Опис помилки реєстрації",
+            "example": "Authentication failed"
+          },
+          "pjsipEndpointId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ідентифікатор endpoint у PJSIP",
+            "example": "endpoint_10"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Чи активний SIP-акаунт. Для кампаній використовуйте активні акаунти (true).",
+            "example": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Логічний стан активності акаунта",
+            "example": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Ознака акаунта за замовчуванням",
+            "example": false
+          },
+          "maxConcurrentCalls": {
+            "type": "integer",
+            "description": "Максимальна кількість одночасних дзвінків",
+            "example": 5
+          },
+          "currentActiveCalls": {
+            "type": "integer",
+            "description": "Поточна кількість активних дзвінків",
+            "example": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Пріоритет балансування (0 = найвищий)",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата створення",
+            "example": "2026-04-01T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата оновлення",
+            "example": "2026-04-20T13:00:00.000Z"
           }
         }
       },

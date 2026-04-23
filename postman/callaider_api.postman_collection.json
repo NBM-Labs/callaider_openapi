@@ -105,6 +105,19 @@
           }
         },
         {
+          "name": "3a. (опційно) Отримати SIP-акаунти",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/sip-accounts",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "sip-accounts"]
+            },
+            "description": "Отримати список SIP-акаунтів компанії (id, name, trunkType, callerId, status, isEnabled). Використовуйте `id` активних акаунтів як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використаються всі активні акаунти."
+          }
+        },
+        {
           "name": "4. Створити групу абонентів",
           "event": [
             {
@@ -190,14 +203,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Акція Весна 2026\",\n  \"description\": \"Обдзвон клієнтів з пропозицією знижки\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1\n}"
+              "raw": "{\n  \"name\": \"Акція Весна 2026\",\n  \"description\": \"Обдзвон клієнтів з пропозицією знижки\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
             },
             "url": {
               "raw": "{{base_url}}/ringing/campaigns",
               "host": ["{{base_url}}"],
               "path": ["ringing", "campaigns"]
             },
-            "description": "Створити кампанію прозвону. Вкажіть `assistantId` (крок 3), `subscriberGroupId` (крок 4), та опціонально `postAnalysisConfigId` і `webhookConfigId` (кроки 1-2). ID кампанії автоматично зберігається у змінну `campaign_id`."
+            "description": "Створити кампанію прозвону. Вкажіть `assistantId` (крок 3), `subscriberGroupId` (крок 4), та опціонально `postAnalysisConfigId`, `webhookConfigId` (кроки 1-2) та `sipAccountIds` (крок 3a - якщо не вказано, використаються всі активні SIP-акаунти). ID кампанії автоматично зберігається у змінну `campaign_id`."
           }
         },
         {
@@ -219,7 +232,7 @@
               "host": ["{{base_url}}"],
               "path": ["ringing", "campaigns", "{{campaign_id}}", "launch"]
             },
-            "description": "Запустити або перезапустити кампанію (до 4 разів). При першому запуску — обдзвонюються всі абоненти групи. При повторному — тільки ті, яким не вдалося додзвонитися."
+            "description": "Запустити або перезапустити кампанію (до 4 разів). При першому запуску — обдзвонюються всі абоненти групи. При повторному — тільки ті, яким не вдалося додзвонитися (failed, без успішних, в межах maxCallTryCount). maxCallTryCount зберігається з першого запуску."
           }
         },
         {
@@ -439,7 +452,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Нова кампанія\",\n  \"description\": \"Опис\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1\n}"
+              "raw": "{\n  \"name\": \"Нова кампанія\",\n  \"description\": \"Опис\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
             },
             "url": {
               "raw": "{{base_url}}/ringing/campaigns",
@@ -690,6 +703,25 @@
               "host": ["{{base_url}}"],
               "path": ["ringing", "webhook-configs", "1", "test"]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — SIP-акаунти",
+      "description": "SIP-акаунти створюються та керуються в особистому кабінеті Callaider. Через API — тільки читання для вибору маршруту дзвінків.",
+      "item": [
+        {
+          "name": "Список SIP-акаунтів",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/sip-accounts",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "sip-accounts"]
+            },
+            "description": "Отримати список SIP-акаунтів компанії (id, name, trunkType, callerId, status, isEnabled). Використовуйте `id` активних акаунтів як елементи масиву `sipAccountIds` при створенні кампанії. Якщо поле не передати - використовуються всі активні акаунти."
           }
         }
       ]
