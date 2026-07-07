@@ -1,0 +1,542 @@
+{
+  "info": {
+    "name": "Callaider Assistant External API",
+    "description": "Postman collection для роботи з текстовим асистентом через публічний API Callaider.\n\nКонтракт: docs/assistants/EXTERNAL_CONVERSATION_BRIDGE.md\nOpenAPI специфікація: spec/v1/openapi.json\n\nПеред запуском задайте collection variables: base_url, api_key, assistant_id. Зовнішній канал асистента має бути увімкнений у вкладці Channels.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_key}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.callaider.ai/v1",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "cld_your_api_key_here",
+      "type": "string"
+    },
+    {
+      "key": "assistant_id",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "external_conversation_id",
+      "value": "demo-chat-001",
+      "type": "string"
+    },
+    {
+      "key": "external_user_id",
+      "value": "demo-user-001",
+      "type": "string"
+    },
+    {
+      "key": "fixed_message_id",
+      "value": "demo-msg-fixed-001",
+      "type": "string"
+    },
+    {
+      "key": "attachment_url",
+      "value": "https://example.com/invoice.pdf",
+      "type": "string"
+    },
+    {
+      "key": "attachment_mime_type",
+      "value": "application/pdf",
+      "type": "string"
+    },
+    {
+      "key": "attachment_filename",
+      "value": "invoice.pdf",
+      "type": "string"
+    },
+    {
+      "key": "last_reply_text",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Messages",
+      "description": "Запити для передачі вхідних повідомлень асистенту. Відповідь повертає масив текстових повідомлень, які клієнтська програма має самостійно доставити у свій канал.",
+      "item": [
+        {
+          "name": "Send Text Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalConversationId\": \"{{external_conversation_id}}\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"messageId\": \"msg-{{$timestamp}}\",\n  \"text\": \"Добрий день, хочу поставити питання асистенту\",\n  \"metadata\": {\n    \"client\": \"postman\",\n    \"scenario\": \"simple-text\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "messages"
+              ]
+            },
+            "description": "Надсилає звичайне текстове повідомлення. `messageId` генерується через Postman dynamic variable `{{$timestamp}}`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('ok=true', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "});",
+                  "pm.test('messages is an array', function () {",
+                  "  pm.expect(json.messages).to.be.an('array');",
+                  "});",
+                  "if (Array.isArray(json.messages) && json.messages[0] && json.messages[0].text) {",
+                  "  pm.collectionVariables.set('last_reply_text', json.messages[0].text);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Message With Attachment URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalConversationId\": \"{{external_conversation_id}}\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"messageId\": \"file-msg-{{$timestamp}}\",\n  \"text\": \"Перевір, будь ласка, цей файл\",\n  \"attachments\": [\n    {\n      \"type\": \"remote_url\",\n      \"url\": \"{{attachment_url}}\",\n      \"mimeType\": \"{{attachment_mime_type}}\",\n      \"filename\": \"{{attachment_filename}}\"\n    }\n  ],\n  \"metadata\": {\n    \"client\": \"postman\",\n    \"scenario\": \"attachment-url\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "messages"
+              ]
+            },
+            "description": "Надсилає повідомлення з вкладенням через короткоживучий публічний HTTPS URL. Замініть `attachment_url` на реальний доступний файл."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('ok=true', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "});",
+                  "pm.test('messages is an array', function () {",
+                  "  pm.expect(json.messages).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Fixed Message ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalConversationId\": \"{{external_conversation_id}}\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"messageId\": \"{{fixed_message_id}}\",\n  \"text\": \"Це повідомлення з фіксованим messageId\",\n  \"metadata\": {\n    \"client\": \"postman\",\n    \"scenario\": \"idempotency\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "messages"
+              ]
+            },
+            "description": "Запустіть цей request двічі поспіль. Перший виклик обробить повідомлення, другий має повернути `duplicate: true` і порожній `messages`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('ok=true', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Conversation State",
+      "description": "Керування станом діалогу. Це потрібно для operator handoff, закриття звернення і відновлення роботи AI.",
+      "item": [
+        {
+          "name": "Pause Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"paused\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"metadata\": {\n    \"reason\": \"operator_handoff\",\n    \"client\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/{{external_conversation_id}}/state",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "{{external_conversation_id}}",
+                "state"
+              ]
+            },
+            "description": "Ставить діалог на паузу. Нові повідомлення з тим самим `externalConversationId` не будуть передані асистенту, відповідь міститиме `skipped: true`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('status=paused', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.status).to.eql('paused');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resume Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"metadata\": {\n    \"reason\": \"operator_returned_to_ai\",\n    \"client\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/{{external_conversation_id}}/state",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "{{external_conversation_id}}",
+                "state"
+              ]
+            },
+            "description": "Повертає діалог в active-стан. Наступне повідомлення знову піде асистенту."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('status=active', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.status).to.eql('active');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"metadata\": {\n    \"reason\": \"case_closed\",\n    \"client\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/{{external_conversation_id}}/state",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "{{external_conversation_id}}",
+                "state"
+              ]
+            },
+            "description": "Закриває поточне звернення. Наступне нове повідомлення з тим самим `externalConversationId` відкриє нове звернення."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('status=closed', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.status).to.eql('closed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Block Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"blocked\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"metadata\": {\n    \"reason\": \"spam_or_abuse\",\n    \"client\": \"postman\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/{{external_conversation_id}}/state",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "{{external_conversation_id}}",
+                "state"
+              ]
+            },
+            "description": "Блокує діалог. Нові повідомлення будуть пропущені без виклику асистента, доки стан не буде змінений на `active`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('status=blocked', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.status).to.eql('blocked');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Workflow Checks",
+      "description": "Службові сценарії для ручної перевірки idempotency, pause/resume і reopen після closed.",
+      "item": [
+        {
+          "name": "Message While Paused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalConversationId\": \"{{external_conversation_id}}\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"messageId\": \"paused-msg-{{$timestamp}}\",\n  \"text\": \"Це повідомлення має бути пропущене, якщо діалог paused\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "messages"
+              ]
+            },
+            "description": "Запустіть після `Pause Conversation`. Очікувана відповідь: `skipped: true`, `messages: []`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('skipped while paused/blocked', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.skipped).to.eql(true);",
+                  "  pm.expect(json.messages).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Message After Close Reopens Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalConversationId\": \"{{external_conversation_id}}\",\n  \"externalUserId\": \"{{external_user_id}}\",\n  \"messageId\": \"reopen-msg-{{$timestamp}}\",\n  \"text\": \"Після закриття звернення я пишу знову\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/assistants/{{assistant_id}}/external-conversations/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "assistants",
+                "{{assistant_id}}",
+                "external-conversations",
+                "messages"
+              ]
+            },
+            "description": "Запустіть після `Close Conversation`. Очікувана відповідь: `reopened: true` і новий active-контекст."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200/201', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('conversation reopened', function () {",
+                  "  pm.expect(json.ok).to.eql(true);",
+                  "  pm.expect(json.status).to.eql('active');",
+                  "  pm.expect(json.reopened).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

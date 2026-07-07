@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Callaider API",
-    "version": "1.0.1",
-    "description": "OpenAPI специфікація для Callaider API — платформи AI-дзвінків.\n\nНаразі реалізовано модуль **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n\n## Авторизація\n\nУсі запити потребують **API-ключ** компанії у форматі Bearer-токена:\n\n```\nAuthorization: Bearer cld_ваш_api_ключ\n```\n\nКлюч створюється в особистому кабінеті Callaider (розділ **Інтеграції → API-ключі**).\nФормат ключа: `cld_` + 32 hex-символи.\n\n## Додаткова документація\n\n- [Прозвон (Ringing) — повний гайд](docs/ringing/RINGING_API.md)\n- [Postman-колекція](postman/callaider_api.postman_collection.json)",
+    "version": "1.1.0",
+    "description": "OpenAPI специфікація для Callaider API — платформи AI-дзвінків.\n\nРеалізовані модулі:\n\n- **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n- **External Conversation Bridge** — підключення власних текстових каналів до AI-асистентів Callaider через server-to-server API.\n\n## Авторизація\n\nУсі запити потребують **API-ключ** компанії у форматі Bearer-токена:\n\n```\nAuthorization: Bearer cld_ваш_api_ключ\n```\n\nКлюч створюється в особистому кабінеті Callaider (розділ **Інтеграції → API-ключі**).\nФормат ключа: `cld_` + 32 hex-символи.\n\n## Додаткова документація\n\n- [Прозвон (Ringing) — повний гайд](docs/ringing/RINGING_API.md)\n- [External Conversation Bridge — гайд інтеграції](docs/assistants/EXTERNAL_CONVERSATION_BRIDGE.md)\n- [Postman-колекція Ringing](postman/callaider_api.postman_collection.json)\n- [Postman-колекція Assistant External API](postman/callaider_assistant_external_api.postman_collection.json)",
     "contact": {
       "name": "Callaider",
       "url": "https://callaider.ai"
@@ -60,6 +60,10 @@
     {
       "name": "SIP-акаунти",
       "description": "SIP-акаунти компанії для маршрутизації дзвінків (тільки читання)"
+    },
+    {
+      "name": "Зовнішні розмови асистентів",
+      "description": "Server-to-server bridge для підключення власних текстових каналів до асистентів Callaider"
     }
   ],
   "paths": {
@@ -1022,6 +1026,265 @@
           }
         }
       }
+    },
+    "/v1/assistants/{assistantId}/external-conversations/messages": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AssistantId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Зовнішні розмови асистентів"
+        ],
+        "summary": "Надіслати повідомлення у зовнішню розмову",
+        "description": "Передає повідомлення з клієнтського каналу до асистента. Endpoint працює синхронно: приймає повідомлення, оновлює контекст розмови і повертає масив відповідей `messages[]`, які клієнтська програма доставляє у свій канал.",
+        "operationId": "sendExternalConversationMessage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalConversationMessageRequest"
+              },
+              "examples": {
+                "text": {
+                  "summary": "Текстове повідомлення",
+                  "value": {
+                    "externalConversationId": "tg:123456",
+                    "externalUserId": "123456",
+                    "messageId": "789",
+                    "text": "Добрий день",
+                    "metadata": {
+                      "username": "client_user",
+                      "chatType": "private"
+                    }
+                  }
+                },
+                "attachmentUrl": {
+                  "summary": "Повідомлення з HTTPS attachment URL",
+                  "value": {
+                    "externalConversationId": "crm:ticket:ABC-1001",
+                    "externalUserId": "customer:555",
+                    "messageId": "crm-msg-9002",
+                    "text": "Перевір, будь ласка, цей файл",
+                    "attachments": [
+                      {
+                        "type": "remote_url",
+                        "url": "https://client.example.com/downloads/invoice-1001.pdf",
+                        "mimeType": "application/pdf",
+                        "filename": "invoice-1001.pdf",
+                        "sizeBytes": 245760
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Повідомлення оброблено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalConversationMessageResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Асистент відповів",
+                    "value": {
+                      "ok": true,
+                      "status": "active",
+                      "messages": [
+                        {
+                          "text": "Добрий день! Чим можу допомогти?"
+                        }
+                      ]
+                    }
+                  },
+                  "duplicate": {
+                    "summary": "Повторний messageId",
+                    "value": {
+                      "ok": true,
+                      "status": "active",
+                      "duplicate": true,
+                      "messages": []
+                    }
+                  },
+                  "skipped": {
+                    "summary": "Розмова paused або blocked",
+                    "value": {
+                      "ok": true,
+                      "status": "paused",
+                      "skipped": true,
+                      "messages": []
+                    }
+                  },
+                  "reopened": {
+                    "summary": "Закрита розмова відкрита новим повідомленням",
+                    "value": {
+                      "ok": true,
+                      "status": "active",
+                      "reopened": true,
+                      "messages": [
+                        {
+                          "text": "Добрий день! Чим можу допомогти?"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Повідомлення прийнято та оброблено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalConversationMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/assistants/{assistantId}/external-conversations/{externalConversationId}/state": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AssistantId"
+        },
+        {
+          "$ref": "#/components/parameters/ExternalConversationId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Зовнішні розмови асистентів"
+        ],
+        "summary": "Змінити стан зовнішньої розмови",
+        "description": "Дозволяє клієнтській програмі поставити діалог на паузу під час handoff оператору, повернути його асистенту, закрити поточне звернення або заблокувати розмову. Статус `closed` завершує поточне звернення; наступне повідомлення з тим самим `externalConversationId` автоматично відкриє новий контекст.",
+        "operationId": "updateExternalConversationState",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalConversationStateRequest"
+              },
+              "examples": {
+                "pause": {
+                  "summary": "Пауза для handoff оператору",
+                  "value": {
+                    "status": "paused",
+                    "externalUserId": "123456",
+                    "metadata": {
+                      "reason": "operator_joined",
+                      "operatorId": "op-17"
+                    }
+                  }
+                },
+                "resume": {
+                  "summary": "Повернути діалог асистенту",
+                  "value": {
+                    "status": "active",
+                    "metadata": {
+                      "reason": "operator_left"
+                    }
+                  }
+                },
+                "close": {
+                  "summary": "Закрити звернення",
+                  "value": {
+                    "status": "closed",
+                    "metadata": {
+                      "reason": "conversation_finished"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Стан розмови оновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalConversationStateResponse"
+                },
+                "examples": {
+                  "paused": {
+                    "summary": "Діалог на паузі",
+                    "value": {
+                      "ok": true,
+                      "status": "paused"
+                    }
+                  },
+                  "active": {
+                    "summary": "Діалог активний",
+                    "value": {
+                      "ok": true,
+                      "status": "active"
+                    }
+                  },
+                  "closed": {
+                    "summary": "Діалог закритий",
+                    "value": {
+                      "ok": true,
+                      "status": "closed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Стан розмови прийнято та оновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalConversationStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1062,6 +1325,27 @@
         "schema": {
           "type": "integer",
           "example": 1
+        }
+      },
+      "AssistantId": {
+        "name": "assistantId",
+        "in": "path",
+        "required": true,
+        "description": "Ідентифікатор асистента. У UI показується як \"Ідентифікатор бота в API\".",
+        "schema": {
+          "type": "integer",
+          "example": 123
+        }
+      },
+      "ExternalConversationId": {
+        "name": "externalConversationId",
+        "in": "path",
+        "required": true,
+        "description": "Стабільний ID діалогу на стороні клієнта. Якщо ID містить reserved URL-символи, передавайте його URL-encoded.",
+        "schema": {
+          "type": "string",
+          "maxLength": 128,
+          "example": "demo-chat-001"
         }
       }
     },
@@ -1107,6 +1391,36 @@
               "statusCode": 404,
               "message": "Not found",
               "error": "Not Found"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Доступ заборонено — канал external вимкнений, асистент вимкнений або функція недоступна для компанії",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "statusCode": 403,
+              "message": "External channel is disabled",
+              "error": "Forbidden"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Тимчасова помилка на стороні Callaider",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "statusCode": 500,
+              "message": "Internal server error",
+              "error": "Internal Server Error"
             }
           }
         }
@@ -1977,6 +2291,240 @@
           "success": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "ExternalConversationStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "paused",
+          "closed",
+          "blocked"
+        ],
+        "description": "Поточний стан зовнішньої розмови"
+      },
+      "ExternalConversationStateInputStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "ai_active",
+          "paused",
+          "handoff",
+          "human_handoff",
+          "closed",
+          "blocked"
+        ],
+        "description": "`ai_active` обробляється як `active`; `handoff` і `human_handoff` обробляються як `paused`."
+      },
+      "ExternalConversationAttachmentRemoteUrl": {
+        "type": "object",
+        "required": [
+          "type",
+          "url"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "remote_url"
+            ],
+            "description": "Поки підтримується тільки `remote_url`."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "description": "Публічний HTTPS URL, доступний backend-сервісу Callaider під час обробки повідомлення.",
+            "example": "https://client.example.com/files/invoice-1001.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "image/heic",
+              "image/heif",
+              "image/gif",
+              "video/mp4",
+              "audio/wav",
+              "audio/x-wav",
+              "audio/wave",
+              "audio/mp3",
+              "audio/mpeg",
+              "audio/aiff",
+              "audio/x-aiff",
+              "audio/aac",
+              "audio/ogg",
+              "audio/flac",
+              "application/pdf"
+            ],
+            "description": "Очікуваний MIME type. Особливо корисно для signed URL, які повертають `application/octet-stream`.",
+            "example": "application/pdf"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Назва файла для відображення у контексті діалогу.",
+            "example": "invoice-1001.pdf"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20971520,
+            "description": "Очікуваний розмір файла. Кожний attachment обмежений 20 MB.",
+            "example": 245760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$",
+            "description": "SHA-256 checksum файла. Якщо передано, Callaider перевірить checksum після скачування.",
+            "example": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        }
+      },
+      "ExternalConversationMessageRequest": {
+        "type": "object",
+        "required": [
+          "externalConversationId"
+        ],
+        "description": "`text` обов’язковий, якщо не передано `attachments`. Якщо передані тільки attachments, асистент отримає повідомлення для аналізу вкладень.",
+        "properties": {
+          "externalConversationId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Стабільний ID діалогу на стороні клієнта. Саме за ним Callaider відновлює контекст.",
+            "example": "tg:123456"
+          },
+          "externalUserId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "ID користувача у зовнішньому каналі.",
+            "example": "123456"
+          },
+          "messageId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "ID вхідного повідомлення. Використовується для захисту від повторної обробки останнього повідомлення.",
+            "example": "789"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "description": "Текст, який буде переданий асистенту.",
+            "example": "Добрий день"
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 5,
+            "description": "До 5 вкладень типу `remote_url`.",
+            "items": {
+              "$ref": "#/components/schemas/ExternalConversationAttachmentRemoteUrl"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Додатковий JSON object для аудиту або інтеграції. Масиви і примітиви ігноруються.",
+            "example": {
+              "username": "client_user",
+              "chatType": "private",
+              "topicId": 42
+            }
+          }
+        }
+      },
+      "ExternalConversationOutboundMessage": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Текст відповіді асистента, який клієнтська програма доставляє у свій канал.",
+            "example": "Добрий день! Чим можу допомогти?"
+          }
+        }
+      },
+      "ExternalConversationMessageResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "status",
+          "messages"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExternalConversationStatus"
+          },
+          "messages": {
+            "type": "array",
+            "description": "Масив відповідей, які клієнтська програма має доставити у свій канал у тому самому порядку.",
+            "items": {
+              "$ref": "#/components/schemas/ExternalConversationOutboundMessage"
+            }
+          },
+          "duplicate": {
+            "type": "boolean",
+            "description": "`true`, якщо `messageId` збігається з останнім обробленим повідомленням для цього `externalConversationId`.",
+            "example": true
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "`true`, якщо conversation має статус `paused` або `blocked` і асистент не відповідав.",
+            "example": true
+          },
+          "reopened": {
+            "type": "boolean",
+            "description": "`true`, якщо нове повідомлення автоматично відкрило новий контекст після статусу `closed`.",
+            "example": true
+          }
+        }
+      },
+      "ExternalConversationStateRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ExternalConversationStateInputStatus"
+          },
+          "externalUserId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "ID користувача у зовнішньому каналі.",
+            "example": "123456"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Додатковий JSON object для аудиту або інтеграції.",
+            "example": {
+              "reason": "operator_joined",
+              "operatorId": "op-17"
+            }
+          }
+        }
+      },
+      "ExternalConversationStateResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExternalConversationStatus"
           }
         }
       }

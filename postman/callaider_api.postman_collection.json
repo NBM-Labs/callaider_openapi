@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Callaider API",
-    "description": "Офіційна Postman-колекція для Callaider API.\n\nНаразі реалізовано модуль **Прозвон (Ringing)** — масовий автоматичний обдзвон з AI-асистентами, постаналізом та вебхуками.\n\nДокументація: docs/ringing/RINGING_API.md\nOpenAPI специфікація: spec/v1/openapi.json",
+    "description": "Postman-колекція для модуля **Прозвон (Ringing)** — масового автоматичного обдзвону з AI-асистентами, постаналізом та вебхуками.\n\nДокументація: docs/ringing/RINGING_API.md\nOpenAPI специфікація: spec/v1/openapi.json\n\nДля External Conversation Bridge використовуйте postman/callaider_assistant_external_api.postman_collection.json.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
