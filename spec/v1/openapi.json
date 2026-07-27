@@ -54,6 +54,10 @@
       "description": "Воркфлоу компанії з контекстом ringing.post_call (тільки читання)"
     },
     {
+      "name": "Воркфлоу після завершення кампанії",
+      "description": "Воркфлоу компанії з контекстом ringing.post_campaign (тільки читання)"
+    },
+    {
       "name": "Вебхуки",
       "description": "Конфігурації вебхуків (тільки читання та тестування)"
     },
@@ -113,7 +117,7 @@
       "post": {
         "tags": ["Кампанії"],
         "summary": "Створити кампанію",
-        "description": "Створити нову кампанію обдзвону. Вкажіть `assistantId` (отримати через `GET /assistants`), `subscriberGroupId` (з створеної групи), та опціонально `postAnalysisConfigId`, `postCallWorkflowId`, `webhookConfigId` і `sipAccountIds` (отримати через `GET /sip-accounts`). Якщо `sipAccountIds` не передано - використовуються всі активні SIP-акаунти компанії.",
+        "description": "Створити нову кампанію обдзвону. Вкажіть `assistantId` (отримати через `GET /assistants`), `subscriberGroupId` (з створеної групи), та опціонально `postAnalysisConfigId`, `postCallWorkflowId`, `postCampaignWorkflowId`, `webhookConfigId` і `sipAccountIds` (отримати через `GET /sip-accounts`). `postCampaignWorkflowId` доступний для вихідних кампаній і запускає воркфлоу один раз після фіналізації кожного окремого запуску кампанії. Якщо `sipAccountIds` не передано - використовуються всі активні SIP-акаунти компанії.",
         "operationId": "createCampaign",
         "requestBody": {
           "required": true,
@@ -891,6 +895,32 @@
         }
       }
     },
+    "/v1/ringing/post-campaign-workflows": {
+      "get": {
+        "tags": ["Воркфлоу після завершення кампанії"],
+        "summary": "Список воркфлоу після завершення кампанії",
+        "description": "Отримати безпечний довідник воркфлоу компанії з контекстом `ringing.post_campaign` без внутрішньої конфігурації.\n\nВикористовуйте `id` з відповіді як `postCampaignWorkflowId` при створенні або оновленні вихідної кампанії. Воркфлоу виконується один раз після фіналізації дзвінків і постаналізу кожного окремого запуску кампанії.",
+        "operationId": "findAllPostCampaignWorkflows",
+        "responses": {
+          "200": {
+            "description": "Список воркфлоу після завершення кампанії",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostCampaignWorkflow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/v1/ringing/webhook-configs": {
       "get": {
         "tags": ["Вебхуки"],
@@ -1521,6 +1551,12 @@
             "description": "ID воркфлоу після дзвінка з контекстом ringing.post_call",
             "example": 7
           },
+          "postCampaignWorkflowId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID воркфлоу з контекстом ringing.post_campaign, який виконується один раз після завершення кожного окремого запуску вихідної кампанії",
+            "example": 9
+          },
           "webhookConfigId": {
             "type": "integer",
             "nullable": true,
@@ -1619,6 +1655,12 @@
             "description": "ID воркфлоу після дзвінка (отримати через GET /v1/ringing/post-call-workflows). null вимикає воркфлоу",
             "example": 7
           },
+          "postCampaignWorkflowId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID воркфлоу після завершення запуску вихідної кампанії (отримати через GET /v1/ringing/post-campaign-workflows). null вимикає воркфлоу",
+            "example": 9
+          },
           "webhookConfigId": {
             "type": "integer",
             "description": "ID конфігурації вебхука (отримати через GET /v1/ringing/webhook-configs)",
@@ -1669,6 +1711,12 @@
             "nullable": true,
             "description": "ID воркфлоу після дзвінка (отримати через GET /v1/ringing/post-call-workflows). null вимикає воркфлоу",
             "example": 7
+          },
+          "postCampaignWorkflowId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID воркфлоу після завершення запуску вихідної кампанії (отримати через GET /v1/ringing/post-campaign-workflows). null вимикає воркфлоу",
+            "example": 9
           },
           "webhookConfigId": {
             "type": "integer",
@@ -2094,6 +2142,33 @@
             "nullable": true,
             "description": "Опис воркфлоу",
             "example": "Створює угоду після завершення дзвінка"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Чи активний воркфлоу",
+            "example": true
+          }
+        }
+      },
+      "PostCampaignWorkflow": {
+        "type": "object",
+        "description": "Безпечне представлення воркфлоу з контекстом ringing.post_campaign без внутрішньої конфігурації",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Ідентифікатор воркфлоу",
+            "example": 9
+          },
+          "name": {
+            "type": "string",
+            "description": "Назва воркфлоу",
+            "example": "Передати результати кампанії"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Опис воркфлоу",
+            "example": "Відправляє один payload після завершення запуску"
           },
           "isActive": {
             "type": "boolean",

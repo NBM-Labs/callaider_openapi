@@ -44,6 +44,11 @@
       "key": "post_call_workflow_id",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "post_campaign_workflow_id",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -94,6 +99,19 @@
               "path": ["ringing", "post-call-workflows"]
             },
             "description": "Отримати воркфлоу з контекстом `ringing.post_call`. Використовуйте `id` як `postCallWorkflowId` при створенні кампанії."
+          }
+        },
+        {
+          "name": "1b. Отримати воркфлоу після завершення кампанії",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/post-campaign-workflows",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "post-campaign-workflows"]
+            },
+            "description": "Отримати воркфлоу з контекстом `ringing.post_campaign`. Використовуйте `id` як `postCampaignWorkflowId` при створенні вихідної кампанії."
           }
         },
         {
@@ -221,14 +239,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Акція Весна 2026\",\n  \"description\": \"Обдзвон клієнтів з пропозицією знижки\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"postCallWorkflowId\": {{post_call_workflow_id}},\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
+              "raw": "{\n  \"name\": \"Акція Весна 2026\",\n  \"description\": \"Обдзвон клієнтів з пропозицією знижки\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"postCallWorkflowId\": {{post_call_workflow_id}},\n  \"postCampaignWorkflowId\": {{post_campaign_workflow_id}},\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
             },
             "url": {
               "raw": "{{base_url}}/ringing/campaigns",
               "host": ["{{base_url}}"],
               "path": ["ringing", "campaigns"]
             },
-            "description": "Створити кампанію прозвону. Вкажіть `assistantId` (крок 3), `subscriberGroupId` (крок 4), та опціонально `postAnalysisConfigId`, `postCallWorkflowId`, `webhookConfigId` і `sipAccountIds` (якщо не вказано, використаються всі активні SIP-акаунти). ID кампанії автоматично зберігається у змінну `campaign_id`."
+            "description": "Створити кампанію прозвону. Вкажіть `assistantId` (крок 3), `subscriberGroupId` (крок 4), та опціонально `postAnalysisConfigId`, `postCallWorkflowId`, `postCampaignWorkflowId`, `webhookConfigId` і `sipAccountIds`. `postCampaignWorkflowId` виконує воркфлоу один раз після фіналізації кожного запуску вихідної кампанії. Якщо `sipAccountIds` не вказано, використаються всі активні SIP-акаунти. ID кампанії автоматично зберігається у змінну `campaign_id`."
           }
         },
         {
@@ -470,7 +488,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Нова кампанія\",\n  \"description\": \"Опис\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"postCallWorkflowId\": {{post_call_workflow_id}},\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
+              "raw": "{\n  \"name\": \"Нова кампанія\",\n  \"description\": \"Опис\",\n  \"assistantId\": 15,\n  \"subscriberGroupId\": {{subscriber_group_id}},\n  \"postAnalysisConfigId\": 1,\n  \"postCallWorkflowId\": {{post_call_workflow_id}},\n  \"postCampaignWorkflowId\": {{post_campaign_workflow_id}},\n  \"webhookConfigId\": 1,\n  \"sipAccountIds\": [10, 11]\n}"
             },
             "url": {
               "raw": "{{base_url}}/ringing/campaigns",
@@ -698,6 +716,25 @@
               "path": ["ringing", "post-call-workflows"]
             },
             "description": "Використовуйте `id` з відповіді як `postCallWorkflowId` при створенні або оновленні кампанії."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Прозвон — Воркфлоу після завершення кампанії",
+      "description": "Воркфлоу створюються в особистому кабінеті Callaider. Через API доступний безпечний довідник конфігурацій з контекстом ringing.post_campaign. Воркфлоу виконується один раз після фіналізації кожного окремого запуску вихідної кампанії.",
+      "item": [
+        {
+          "name": "Список воркфлоу",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ringing/post-campaign-workflows",
+              "host": ["{{base_url}}"],
+              "path": ["ringing", "post-campaign-workflows"]
+            },
+            "description": "Використовуйте `id` з відповіді як `postCampaignWorkflowId` при створенні або оновленні вихідної кампанії."
           }
         }
       ]
